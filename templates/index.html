@@ -453,6 +453,7 @@
                             <th>Monthly Depreciation</th>
                             <th>Remaining Months</th>
                             <th>Purchase Date</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="assets-tbody">
@@ -465,6 +466,7 @@
         <div id="tab-transactions" class="tab-content hidden">
             <div class="card">
                 <h2>Transaction History</h2>
+                <button class="btn" style="background: #dc3545; color: white; margin-bottom: 20px;" onclick="clearAllData()">Clear All Data</button>
 
                 <table>
                     <thead>
@@ -474,6 +476,7 @@
                             <th>Type</th>
                             <th>Category</th>
                             <th>Amount</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="transactions-tbody">
@@ -759,11 +762,12 @@
                             <td>$${a.monthly_depreciation.toFixed(2)}</td>
                             <td>${a.remaining_months} months</td>
                             <td>${a.purchase_date}</td>
+                            <td><button class="btn" style="background: #dc3545; color: white; padding: 5px 10px; font-size: 0.8em;" onclick="deleteAsset(${a.id})">Delete</button></td>
                         </tr>
                     `).join('');
 
                     if (assetsData.data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No assets recorded</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No assets recorded</td></tr>';
                     }
                 }
             } catch (e) {
@@ -795,16 +799,94 @@
                                 <td><span class="tag ${type.class}">${type.label}</span></td>
                                 <td>${t.category}</td>
                                 <td style="color: ${t.transaction_type === 'income' ? '#28a745' : '#dc3545'}">${sign}$${t.amount.toLocaleString()}</td>
+                                <td><button class="btn" style="background: #dc3545; color: white; padding: 5px 10px; font-size: 0.8em;" onclick="deleteTransaction(${t.id})">Delete</button></td>
                             </tr>
                         `;
                     }).join('');
 
                     if (data.data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">No transactions recorded</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No transactions recorded</td></tr>';
                     }
                 }
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        // Delete transaction
+        async function deleteTransaction(transactionId) {
+            if (!confirm('Are you sure you want to delete this transaction? If it has an associated asset, the asset will also be deleted.')) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/transaction/${transactionId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Deleted successfully');
+                    loadTransactions();
+                } else {
+                    alert('Delete failed: ' + data.error);
+                }
+            } catch (e) {
+                alert('Network error: ' + e.message);
+            }
+        }
+
+        // Delete asset
+        async function deleteAsset(assetId) {
+            if (!confirm('Are you sure you want to delete this asset? Related transactions and depreciation records will also be deleted.')) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/asset/${assetId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Deleted successfully');
+                    loadAssets();
+                } else {
+                    alert('Delete failed: ' + data.error);
+                }
+            } catch (e) {
+                alert('Network error: ' + e.message);
+            }
+        }
+
+        // Clear all data
+        async function clearAllData() {
+            if (!confirm('Are you sure you want to clear ALL data? This action cannot be undone!')) {
+                return;
+            }
+
+            if (!confirm('This will delete all transactions, assets, and depreciation records. Are you absolutely sure?')) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/clear-all', {
+                    method: 'POST'
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('All data cleared successfully');
+                    loadTransactions();
+                    loadAssets();
+                } else {
+                    alert('Clear failed: ' + data.error);
+                }
+            } catch (e) {
+                alert('Network error: ' + e.message);
             }
         }
     </script>

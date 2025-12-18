@@ -250,6 +250,84 @@ def dispose_asset(asset_id: int):
         ''', (asset_id,))
 
 
+def delete_transaction(transaction_id: int) -> bool:
+    """Delete a transaction record"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        # Get transaction info, check if there's an associated asset
+        cursor.execute("SELECT asset_id FROM transactions WHERE id = ?", (transaction_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+
+        asset_id = row['asset_id']
+
+        # Delete transaction
+        cursor.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
+
+        # If there's an associated asset, delete it and related depreciation records
+        if asset_id:
+            cursor.execute("DELETE FROM depreciation_records WHERE asset_id = ?", (asset_id,))
+            cursor.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
+
+        return True
+
+
+def delete_asset(asset_id: int) -> bool:
+    """Delete an asset and related records"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Delete related depreciation records
+        cursor.execute("DELETE FROM depreciation_records WHERE asset_id = ?", (asset_id,))
+
+        # Delete related transactions
+        cursor.execute("DELETE FROM transactions WHERE asset_id = ?", (asset_id,))
+
+        # Delete asset
+        cursor.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
+
+        return True
+
+
+def clear_all_data():
+    """Clear all data (for removing sample data)"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM depreciation_records")
+        cursor.execute("DELETE FROM transactions")
+        cursor.execute("DELETE FROM assets")
+        return True
+
+
+def update_transaction(transaction_id: int, description: str = None, amount: float = None, category: str = None) -> bool:
+    """Update a transaction record"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        updates = []
+        params = []
+
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+        if amount is not None:
+            updates.append("amount = ?")
+            params.append(amount)
+        if category is not None:
+            updates.append("category = ?")
+            params.append(category)
+
+        if not updates:
+            return False
+
+        params.append(transaction_id)
+        query = f"UPDATE transactions SET {', '.join(updates)} WHERE id = ?"
+        cursor.execute(query, params)
+
+        return cursor.rowcount > 0
+
+
 # ==================== Depreciation Record Operations ====================
 
 def add_depreciation_record(asset_id: int, period: str, amount: float, accumulated: float) -> int:

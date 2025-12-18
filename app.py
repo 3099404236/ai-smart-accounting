@@ -6,7 +6,7 @@ Flask Backend API
 from flask import Flask, request, jsonify, render_template
 from datetime import date, datetime
 
-from database import init_database, get_transactions, get_assets
+from database import init_database, get_transactions, get_assets, delete_transaction, delete_asset, clear_all_data, update_transaction
 from accounting import record_expense, record_income, record_capital_expense_manual, get_asset_details, process_monthly_depreciation
 from reports import (
     get_cash_flow_report, get_accrual_report, get_balance_sheet,
@@ -243,6 +243,61 @@ def api_run_depreciation():
         result = process_monthly_depreciation(period)
         return jsonify({'success': True, 'data': result})
 
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/transaction/<int:transaction_id>', methods=['DELETE'])
+def api_delete_transaction(transaction_id):
+    """Delete a transaction"""
+    try:
+        success = delete_transaction(transaction_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Record not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/transaction/<int:transaction_id>', methods=['PUT'])
+def api_update_transaction(transaction_id):
+    """Update a transaction"""
+    try:
+        data = request.get_json()
+        success = update_transaction(
+            transaction_id,
+            description=data.get('description'),
+            amount=data.get('amount'),
+            category=data.get('category')
+        )
+        if success:
+            return jsonify({'success': True, 'message': 'Updated successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Update failed'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/asset/<int:asset_id>', methods=['DELETE'])
+def api_delete_asset(asset_id):
+    """Delete an asset"""
+    try:
+        success = delete_asset(asset_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Asset not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/clear-all', methods=['POST'])
+def api_clear_all():
+    """Clear all data"""
+    try:
+        clear_all_data()
+        return jsonify({'success': True, 'message': 'All data cleared'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
